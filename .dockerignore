@@ -1,0 +1,11 @@
+.git
+.DS_Store
+
+laravel/vendor
+laravel/node_modules
+laravel/data
+laravel/storage/logs/*
+laravel/storage/framework/cache/data/*
+laravel/storage/framework/sessions/*
+laravel/storage/framework/views/*
+laravel/.phpunit.result.cache

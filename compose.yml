@@ -40,10 +40,12 @@ services:
     container_name: laravel_app
     ports:
       - "8080:80"
+    env_file:
+      - ./laravel/.env
     environment:
       APP_ENV: production
-      APP_KEY: "${APP_KEY}"
-      DB_CONNECTION: mysql
+      APP_URL: "http://localhost:8080"
+      DB_CONNECTION: mariadb
       DB_HOST: mariadb
       DB_PORT: "3306"
       DB_DATABASE: laravel
@@ -51,9 +53,11 @@ services:
       DB_PASSWORD: ""
       CLICKHOUSE_HOST: clickhouse
       CLICKHOUSE_PORT: "8123"
-      CLICKHOUSE_DB: laravel
-      CLICKHOUSE_USER: laravel
+      CLICKHOUSE_DATABASE: laravel
+      CLICKHOUSE_USERNAME: laravel
       CLICKHOUSE_PASSWORD: laravelmdp
+      CLICKHOUSE_SECURE: "false"
+      CLICKHOUSE_TIMEOUT: "10"
     depends_on:
       mariadb:
         condition: service_healthy
