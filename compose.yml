@@ -33,6 +33,36 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel_app
+    ports:
+      - "8080:80"
+    environment:
+      APP_ENV: production
+      APP_KEY: "${APP_KEY}"
+      DB_CONNECTION: mysql
+      DB_HOST: mariadb
+      DB_PORT: "3306"
+      DB_DATABASE: laravel
+      DB_USERNAME: root
+      DB_PASSWORD: ""
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DB: laravel
+      CLICKHOUSE_USER: laravel
+      CLICKHOUSE_PASSWORD: laravelmdp
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./laravel/storage:/var/www/storage
+      - ./laravel/data:/var/www/data
+
 volumes:
   mariadb-data:
   clickhouse-data:
