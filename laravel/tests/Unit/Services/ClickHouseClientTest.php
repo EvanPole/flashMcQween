@@ -29,7 +29,7 @@ class ClickHouseClientTest extends TestCase
         ], $rows);
 
         Http::assertSent(function ($request): bool {
-            return $request['query'] === "SELECT id, term FROM search_terms WHERE term = 'flash\\'s' FORMAT JSONEachRow";
+            return $request->body() === "SELECT id, term FROM search_terms WHERE term = 'flash\\'s' FORMAT JSONEachRow";
         });
     }
 
@@ -59,6 +59,45 @@ class ClickHouseClientTest extends TestCase
         $this->client()->insert('search.documents; DROP TABLE users', [
             ['id' => 1],
         ]);
+    }
+
+    public function test_it_streams_csv_files_to_clickhouse(): void
+    {
+        $body = null;
+
+        Http::fake(function ($request) use (&$body) {
+            $body = $request->body();
+
+            return Http::response();
+        });
+
+        $path = tempnam(sys_get_temp_dir(), 'clickhouse-csv-');
+        file_put_contents($path, "Date;Speed;Density;Bt;Bz\n20160726000000;;;2.89;0.06\n");
+
+        try {
+            $this->client()->insertCsvFile(
+                table: 'measurements',
+                path: $path,
+                columns: ['date_raw', 'speed', 'density', 'bt', 'bz'],
+                settings: [
+                    'format_csv_delimiter' => ';',
+                    'input_format_csv_empty_as_default' => 1,
+                ],
+                timeout: 120,
+                hasHeader: true,
+            );
+        } finally {
+            unlink($path);
+        }
+
+        Http::assertSent(function ($request): bool {
+            return $this->queryParameter($request->url(), 'query') === 'INSERT INTO measurements (date_raw, speed, density, bt, bz) FORMAT CSVWithNames'
+                && $this->queryParameter($request->url(), 'format_csv_delimiter') === ';'
+                && $this->queryParameter($request->url(), 'input_format_csv_empty_as_default') === '1'
+                && $this->queryParameter($request->url(), 'input_format_with_names_use_header') === '0';
+        });
+
+        $this->assertSame("Date;Speed;Density;Bt;Bz\n20160726000000;;;2.89;0.06\n", $body);
     }
 
     private function client(): ClickHouseClient

@@ -1,10 +1,11 @@
 services:
   mariadb:
     image: mariadb:11
+    container_name: mariadb
     ports:
       - "3306:3306"
     environment:
-      MARIADB_DATABASE: ${DB_DATABASE:-laravel}
+      MARIADB_DATABASE: laravel
       MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
     volumes:
       - mariadb-data:/var/lib/mysql
@@ -15,14 +16,15 @@ services:
       retries: 5
 
   clickhouse:
-    image: clickhouse/clickhouse-server:25
+    image: clickhouse/clickhouse-server:25.8
+    container_name: clickhouse
     ports:
       - "8123:8123"
       - "9000:9000"
     environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-search}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME:-default}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DB: laravel
+      CLICKHOUSE_USER: laravel
+      CLICKHOUSE_PASSWORD: laravelmdp
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     healthcheck:
