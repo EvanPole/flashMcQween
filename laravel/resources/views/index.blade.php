@@ -36,6 +36,12 @@
             margin-bottom: 12px;
         }
 
+        #answer {
+            min-height: 28px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
         .offline {
             color: #a15c00;
         }
@@ -82,10 +88,11 @@
 </head>
 <body>
     <form id="search-form">
-        <input id="search-input" name="q" type="search" placeholder="2016, 201607, 20160726..." autocomplete="off" autofocus>
+        <input id="search-input" name="q" type="search" placeholder="Quel Bz moyen le 9 juin 2024 ?" autocomplete="off" autofocus>
         <button type="submit">Chercher</button>
     </form>
 
+    <div id="answer"></div>
     <div id="status"></div>
 
     <table>
@@ -108,6 +115,7 @@
     <script>
         const form = document.querySelector('#search-form');
         const input = document.querySelector('#search-input');
+        const answerEl = document.querySelector('#answer');
         const statusEl = document.querySelector('#status');
         const resultsEl = document.querySelector('#results');
         const dbName = 'flash-clickhouse-search';
@@ -171,7 +179,7 @@
 
         function renderRows(rows) {
             if (!rows.length) {
-                resultsEl.innerHTML = '<tr><td colspan="5">Aucun résultat.</td></tr>';
+                resultsEl.innerHTML = '<tr><td colspan="5">Aucun résultat détaillé.</td></tr>';
                 return;
             }
 
@@ -184,6 +192,35 @@
                     <td>${formatValue(row.bz)}</td>
                 </tr>
             `).join('');
+        }
+
+        function renderSummary(summary) {
+            answerEl.textContent = '';
+
+            if (!summary) {
+                return;
+            }
+
+            if (summary.kind === 'bz_average') {
+                const value = summary.bz_average === null || summary.bz_average === undefined ? 'indisponible' : summary.bz_average;
+                const samples = summary.samples || 0;
+                answerEl.textContent = `Bz moyen: ${value} (${samples} mesure(s)).`;
+                return;
+            }
+
+            if (summary.kind === 'bz_maximum') {
+                answerEl.textContent = 'Instants où le Bz est le plus haut.';
+                return;
+            }
+
+            if (summary.kind === 'bz_minimum') {
+                answerEl.textContent = 'Instants où le Bz est le plus bas.';
+                return;
+            }
+
+            if (summary.kind === 'bz_threshold') {
+                answerEl.textContent = `Instants où Bz ${summary.operator} ${summary.value}.`;
+            }
         }
 
         function formatValue(value) {
@@ -202,12 +239,14 @@
         async function search(event) {
             event.preventDefault();
 
-            const query = normalizeQuery(input.value.trim());
+            const rawQuery = input.value.trim();
+            const query = normalizeQuery(rawQuery);
             statusEl.className = '';
             statusEl.textContent = 'Recherche...';
+            answerEl.textContent = '';
 
             try {
-                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const response = await fetch(`/api/search?q=${encodeURIComponent(rawQuery)}`);
 
                 if (!response.ok) {
                     throw new Error('API unavailable');
@@ -216,12 +255,14 @@
                 const payload = await response.json();
                 const rows = payload.rows || [];
 
+                renderSummary(payload.summary || null);
                 await storeSearch(query, rows);
                 renderRows(rows);
                 statusEl.textContent = `${rows.length} résultat(s) depuis ClickHouse.`;
             } catch (error) {
                 const rows = await offlineSearch(query);
 
+                renderSummary(null);
                 renderRows(rows);
                 statusEl.className = 'offline';
                 statusEl.textContent = `Mode hors ligne: ${rows.length} résultat(s) depuis les anciennes recherches.`;
