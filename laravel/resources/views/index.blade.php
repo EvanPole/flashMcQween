@@ -17,6 +17,18 @@
             margin-bottom: 12px;
         }
 
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        header form {
+            margin-bottom: 0;
+        }
+
         input {
             flex: 1;
             padding: 8px;
@@ -81,6 +93,16 @@
     </style>
 </head>
 <body>
+    <header>
+        <div>
+            Connecte en tant que {{ auth()->user()->name }}
+        </div>
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit">Deconnexion</button>
+        </form>
+    </header>
+
     <form id="search-form">
         <input id="search-input" name="q" type="search" placeholder="2016, 201607, 20160726..." autocomplete="off" autofocus>
         <button type="submit">Chercher</button>

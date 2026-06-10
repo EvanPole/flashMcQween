@@ -1,19 +1,23 @@
 <?php
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SearchController;
-use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
-use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-$stateless = [
-    PreventRequestForgery::class,
-    StartSession::class,
-    ShareErrorsFromSession::class,
-];
+Route::middleware('guest')->group(function (): void {
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
 
-Route::get('/', function () {
-    return view('index');
-})->withoutMiddleware($stateless);
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+});
 
-Route::get('/api/search', SearchController::class)->withoutMiddleware($stateless);
+Route::middleware('auth')->group(function (): void {
+    Route::get('/', function () {
+        return view('index');
+    })->name('home');
+
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/api/search', SearchController::class);
+});

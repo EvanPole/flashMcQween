@@ -39,5 +39,6 @@ set_env CLICKHOUSE_SECURE "${CLICKHOUSE_SECURE:-false}"
 set_env CLICKHOUSE_TIMEOUT "${CLICKHOUSE_TIMEOUT:-10}"
 
 php artisan package:discover --ansi >/dev/null 2>&1 || true
+php artisan migrate --force --ansi
 
 exec "$@"
