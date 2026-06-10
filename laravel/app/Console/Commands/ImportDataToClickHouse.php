@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Services\ClickHouse\ClickHouseClient;
 use Illuminate\Console\Command;
-use Illuminate\Support\Number;
 use RuntimeException;
 use SplFileInfo;
 use Symfony\Component\Finder\Finder;
@@ -73,7 +72,7 @@ class ImportDataToClickHouse extends Command
 
         $this->components->info(sprintf(
             'Done. %s rows are now available in [%s].',
-            Number::format($rowCount),
+            number_format($rowCount),
             $table,
         ));
 
