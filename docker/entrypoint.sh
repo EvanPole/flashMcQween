@@ -40,5 +40,6 @@ set_env CLICKHOUSE_TIMEOUT "${CLICKHOUSE_TIMEOUT:-10}"
 
 php artisan package:discover --ansi >/dev/null 2>&1 || true
 php artisan migrate --force --ansi
+php artisan clickhouse:import-data --if-empty --timeout="${CLICKHOUSE_IMPORT_TIMEOUT:-300}" --ansi
 
 exec "$@"

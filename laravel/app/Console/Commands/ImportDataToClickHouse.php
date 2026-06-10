@@ -14,6 +14,7 @@ class ImportDataToClickHouse extends Command
         {path=data : Directory containing yearly CSV folders, or a single CSV file}
         {--table=measurements : Destination ClickHouse table}
         {--fresh : Truncate the destination table before importing}
+        {--if-empty : Skip import when the destination table already contains rows}
         {--timeout=300 : HTTP timeout, in seconds, for each CSV insert}';
 
     protected $description = 'Import Date;Speed;Density;Bt;Bz CSV data into ClickHouse.';
@@ -24,6 +25,19 @@ class ImportDataToClickHouse extends Command
         $table = $this->identifier((string) $this->option('table'));
         $timeout = (int) $this->option('timeout');
 
+        $this->createTable($clickHouse, $table);
+
+        if ($this->option('fresh')) {
+            $clickHouse->statement(sprintf('TRUNCATE TABLE %s', $table));
+        } elseif ($this->option('if-empty') && $this->rowCount($clickHouse, $table) > 0) {
+            $this->components->info(sprintf(
+                'ClickHouse table [%s] already contains data. Skipping import.',
+                $table,
+            ));
+
+            return self::SUCCESS;
+        }
+
         $absolutePath = $this->absolutePath($path);
         $files = $this->csvFiles($absolutePath);
 
@@ -31,12 +45,6 @@ class ImportDataToClickHouse extends Command
             $this->components->error(sprintf('No CSV files found in [%s].', $absolutePath));
 
             return self::FAILURE;
-        }
-
-        $this->createTable($clickHouse, $table);
-
-        if ($this->option('fresh')) {
-            $clickHouse->statement(sprintf('TRUNCATE TABLE %s', $table));
         }
 
         $this->components->info(sprintf(
@@ -67,8 +75,7 @@ class ImportDataToClickHouse extends Command
         $bar->finish();
         $this->newLine(2);
 
-        $rows = $clickHouse->select(sprintf('SELECT count() AS rows FROM %s', $table));
-        $rowCount = (int) ($rows[0]['rows'] ?? 0);
+        $rowCount = $this->rowCount($clickHouse, $table);
 
         $this->components->info(sprintf(
             'Done. %s rows are now available in [%s].',
@@ -77,6 +84,13 @@ class ImportDataToClickHouse extends Command
         ));
 
         return self::SUCCESS;
+    }
+
+    private function rowCount(ClickHouseClient $clickHouse, string $table): int
+    {
+        $rows = $clickHouse->select(sprintf('SELECT count() AS rows FROM %s', $table));
+
+        return (int) ($rows[0]['rows'] ?? 0);
     }
 
     private function createTable(ClickHouseClient $clickHouse, string $table): void
