@@ -182,19 +182,40 @@
         });
     }
 
+    function unavailableError(message = 'Serveur indisponible.') {
+        const error = new Error(message);
+        error.offlineEligible = true;
+
+        return error;
+    }
+
     async function submitOnline(form) {
         let formData = new FormData(form);
-        let response = await postJson(form.action, formData);
+        let response;
+
+        try {
+            response = await postJson(form.action, formData);
+        } catch (error) {
+            throw unavailableError();
+        }
 
         if (response.status === 419) {
             formData = new FormData(form);
-            response = await postJson(form.action, formData, await freshCsrfToken());
+
+            try {
+                response = await postJson(form.action, formData, await freshCsrfToken());
+            } catch (error) {
+                throw unavailableError();
+            }
         }
 
         const payload = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-            throw new Error(payload.message || 'Connexion refusee.');
+            const error = new Error(payload.message || 'Connexion refusee.');
+            error.offlineEligible = response.status >= 500;
+
+            throw error;
         }
 
         return payload;
@@ -254,7 +275,7 @@
 
             window.location.href = payload.redirect || '/';
         } catch (error) {
-            if (navigator.onLine) {
+            if (navigator.onLine && !error.offlineEligible) {
                 showError(error.message);
                 return;
             }
@@ -358,6 +379,14 @@
         });
     }
 
+    function redirectOfflineSessionFromLogin() {
+        const session = readSession();
+
+        if (session?.offline && document.querySelector('#login-form')) {
+            window.location.href = '/';
+        }
+    }
+
     async function registerServiceWorker() {
         if (!('serviceWorker' in navigator)) {
             return;
@@ -376,5 +405,6 @@
     populateLoginHistory();
     hydrateOfflineIndex();
     registerServiceWorker();
+    redirectOfflineSessionFromLogin();
     reloginOnline();
 })();

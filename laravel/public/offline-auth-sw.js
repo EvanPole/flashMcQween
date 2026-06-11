@@ -1,4 +1,4 @@
-const cacheName = 'flashmcqween-offline-auth-v1';
+const cacheName = 'flashmcqween-offline-auth-v2';
 const shellUrls = [
     '/login',
     '/register',
@@ -29,9 +29,11 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    if (response.ok) {
-                        caches.open(cacheName).then((cache) => cache.put(request, response.clone()));
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
                     }
+
+                    caches.open(cacheName).then((cache) => cache.put(request, response.clone()));
 
                     return response;
                 })
