@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +17,7 @@ class AuthController extends Controller
         return view('auth.register');
     }
 
-    public function register(Request $request): RedirectResponse
+    public function register(Request $request): RedirectResponse|JsonResponse
     {
         $attributes = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -29,6 +30,16 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'redirect' => route('home', [], false),
+                'user' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+            ]);
+        }
+
         return redirect()->route('home');
     }
 
@@ -37,7 +48,7 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    public function login(Request $request): RedirectResponse
+    public function login(Request $request): RedirectResponse|JsonResponse
     {
         $credentials = $request->validate([
             'email' => ['required', 'string', 'email'],
@@ -45,12 +56,33 @@ class AuthController extends Controller
         ]);
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Ces identifiants ne correspondent a aucun compte.',
+                    'errors' => [
+                        'email' => ['Ces identifiants ne correspondent a aucun compte.'],
+                    ],
+                ], 422);
+            }
+
             return back()
                 ->withErrors(['email' => 'Ces identifiants ne correspondent a aucun compte.'])
                 ->onlyInput('email');
         }
 
         $request->session()->regenerate();
+
+        if ($request->expectsJson()) {
+            $user = $request->user();
+
+            return response()->json([
+                'redirect' => redirect()->intended(route('home'))->getTargetUrl(),
+                'user' => [
+                    'name' => $user?->name,
+                    'email' => $user?->email,
+                ],
+            ]);
+        }
 
         return redirect()->intended(route('home'));
     }

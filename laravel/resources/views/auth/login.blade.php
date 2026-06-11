@@ -68,13 +68,15 @@
                 {{ $errors->first() }}
             </div>
         @endif
+        <div id="offline-auth-error" class="error" hidden></div>
 
-        <form method="POST" action="{{ route('login') }}">
+        <form id="login-form" method="POST" action="{{ route('login') }}">
             @csrf
 
             <label>
                 <span>Email</span>
-                <input name="email" type="email" value="{{ old('email') }}" required autofocus autocomplete="email">
+                <input name="email" type="email" value="{{ old('email') }}" required autofocus autocomplete="email" list="offline-users">
+                <datalist id="offline-users"></datalist>
             </label>
 
             <label>
@@ -93,5 +95,6 @@
             </div>
         </form>
     </main>
+    <script src="/js/offline-auth.js" defer></script>
 </body>
 </html>

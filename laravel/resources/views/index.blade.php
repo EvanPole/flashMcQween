@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Recherche ClickHouse</title>
     <style>
         body {
@@ -33,6 +34,26 @@
             flex: 1;
             padding: 8px;
             border: 1px solid #aaa;
+        }
+
+        select {
+            padding: 8px;
+            border: 1px solid #aaa;
+            background: white;
+        }
+
+        input[type="number"] {
+            max-width: 90px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .is-hidden {
+            display: none;
         }
 
         button {
@@ -79,10 +100,15 @@
             }
 
             input,
+            select,
             button {
                 box-sizing: border-box;
                 width: 100%;
                 margin-bottom: 8px;
+            }
+
+            .filters {
+                display: block;
             }
 
             table {
@@ -94,24 +120,48 @@
 </head>
 <body>
     <header>
-        <div>
+        <div id="auth-user-label">
             Connecte en tant que {{ auth()->user()->name }}
         </div>
-        <form method="POST" action="{{ route('logout') }}">
+        <form id="logout-form" method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit">Deconnexion</button>
         </form>
     </header>
 
     <form id="search-form">
-        <input id="search-input" name="q" type="search" placeholder="2016, 201607, 20160726..." autocomplete="off" autofocus>
+        <input id="search-input" name="q" type="search" placeholder="9 juin 2024, 20240609, 2024..." autocomplete="off" autofocus>
+        <select id="mode-filter" name="mode">
+            <option value="raw">Mesures</option>
+            <option value="bz_average">Bz moyen</option>
+            <option value="bz_threshold">Bz selon seuil</option>
+            <option value="speed_12h_average">Vitesse moyenne par tranche</option>
+        </select>
         <button type="submit">Chercher</button>
     </form>
+
+    <div class="filters">
+        <select id="bz-operator-filter" name="bz_operator" class="is-hidden">
+            <option value="<">&lt;</option>
+            <option value="<=">&lt;=</option>
+            <option value="=">=</option>
+            <option value=">=">&gt;=</option>
+            <option value=">">&gt;</option>
+        </select>
+        <input id="bz-value-filter" class="is-hidden" name="bz_value" type="number" value="-40" step="0.1">
+        <select id="bucket-hours-filter" name="bucket_hours" class="is-hidden">
+            <option value="12">12h</option>
+            <option value="1">1h</option>
+            <option value="3">3h</option>
+            <option value="6">6h</option>
+            <option value="24">24h</option>
+        </select>
+    </div>
 
     <div id="status"></div>
 
     <table>
-        <thead>
+        <thead id="table-head">
             <tr>
                 <th>Date</th>
                 <th>Speed</th>
@@ -130,7 +180,12 @@
     <script>
         const form = document.querySelector('#search-form');
         const input = document.querySelector('#search-input');
+        const modeFilter = document.querySelector('#mode-filter');
+        const bzOperatorFilter = document.querySelector('#bz-operator-filter');
+        const bzValueFilter = document.querySelector('#bz-value-filter');
+        const bucketHoursFilter = document.querySelector('#bucket-hours-filter');
         const statusEl = document.querySelector('#status');
+        const tableHeadEl = document.querySelector('#table-head');
         const resultsEl = document.querySelector('#results');
         const dbName = 'flash-clickhouse-search';
         const storeName = 'searches';
@@ -191,9 +246,45 @@
             });
         }
 
-        function renderRows(rows) {
+        function syncFilters() {
+            const mode = modeFilter.value;
+            const showBzThreshold = mode === 'bz_threshold';
+            const showBucket = mode === 'speed_12h_average';
+
+            bzOperatorFilter.classList.toggle('is-hidden', !showBzThreshold);
+            bzValueFilter.classList.toggle('is-hidden', !showBzThreshold);
+            bucketHoursFilter.classList.toggle('is-hidden', !showBucket);
+        }
+
+        function renderRows(rows, mode = 'raw') {
+            renderHeader(mode);
+
             if (!rows.length) {
-                resultsEl.innerHTML = '<tr><td colspan="5">Aucun résultat.</td></tr>';
+                resultsEl.innerHTML = `<tr><td colspan="${columnCount(mode)}">Aucun résultat.</td></tr>`;
+                return;
+            }
+
+            if (mode === 'bz_average') {
+                resultsEl.innerHTML = rows.map((row) => `
+                    <tr>
+                        <td>${escapeHtml(row.period_start || '')}</td>
+                        <td>${escapeHtml(row.period_end || '')}</td>
+                        <td>${formatValue(row.bz_average)}</td>
+                        <td>${formatValue(row.samples)}</td>
+                    </tr>
+                `).join('');
+                return;
+            }
+
+            if (mode === 'speed_12h_average') {
+                resultsEl.innerHTML = rows.map((row) => `
+                    <tr>
+                        <td>${escapeHtml(row.bucket_start || '')}</td>
+                        <td>${escapeHtml(row.bucket_end || '')}</td>
+                        <td>${formatValue(row.speed_average)}</td>
+                        <td>${formatValue(row.samples)}</td>
+                    </tr>
+                `).join('');
                 return;
             }
 
@@ -206,6 +297,62 @@
                     <td>${formatValue(row.bz)}</td>
                 </tr>
             `).join('');
+        }
+
+        function renderHeader(mode) {
+            if (mode === 'bz_average') {
+                tableHeadEl.innerHTML = `
+                    <tr>
+                        <th>Debut</th>
+                        <th>Fin</th>
+                        <th>Bz moyen</th>
+                        <th>Mesures</th>
+                    </tr>
+                `;
+                return;
+            }
+
+            if (mode === 'speed_12h_average') {
+                tableHeadEl.innerHTML = `
+                    <tr>
+                        <th>Debut tranche</th>
+                        <th>Fin tranche</th>
+                        <th>Vitesse moyenne</th>
+                        <th>Mesures</th>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableHeadEl.innerHTML = `
+                <tr>
+                    <th>Date</th>
+                    <th>Speed</th>
+                    <th>Density</th>
+                    <th>Bt</th>
+                    <th>Bz</th>
+                </tr>
+            `;
+        }
+
+        function columnCount(mode) {
+            return mode === 'raw' || mode === 'bz_threshold' ? 5 : 4;
+        }
+
+        function statusText(mode, rowCount) {
+            if (mode === 'bz_average') {
+                return rowCount ? 'Bz moyen calcule depuis ClickHouse.' : 'Aucune mesure Bz pour cette recherche.';
+            }
+
+            if (mode === 'bz_threshold') {
+                return `${rowCount} moment(s) ou Bz ${bzOperatorFilter.value} ${bzValueFilter.value}.`;
+            }
+
+            if (mode === 'speed_12h_average') {
+                return `${rowCount} tranche(s) de vitesse moyenne.`;
+            }
+
+            return `${rowCount} resultat(s) depuis ClickHouse.`;
         }
 
         function formatValue(value) {
@@ -224,12 +371,22 @@
         async function search(event) {
             event.preventDefault();
 
-            const query = normalizeQuery(input.value.trim());
+            const rawQuery = input.value.trim();
+            const query = normalizeQuery(rawQuery);
+            const mode = modeFilter.value;
+            const params = new URLSearchParams({
+                q: rawQuery,
+                mode,
+                bz_operator: bzOperatorFilter.value,
+                bz_value: bzValueFilter.value,
+                bucket_hours: bucketHoursFilter.value,
+            });
+
             statusEl.className = '';
             statusEl.textContent = 'Recherche...';
 
             try {
-                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const response = await fetch(`/api/search?${params.toString()}`);
 
                 if (!response.ok) {
                     throw new Error('API unavailable');
@@ -239,18 +396,21 @@
                 const rows = payload.rows || [];
 
                 await storeSearch(query, rows);
-                renderRows(rows);
-                statusEl.textContent = `${rows.length} résultat(s) depuis ClickHouse.`;
+                renderRows(rows, payload.mode || mode);
+                statusEl.textContent = statusText(payload.mode || mode, rows.length);
             } catch (error) {
                 const rows = await offlineSearch(query);
 
-                renderRows(rows);
+                renderRows(rows, 'raw');
                 statusEl.className = 'offline';
                 statusEl.textContent = `Mode hors ligne: ${rows.length} résultat(s) depuis les anciennes recherches.`;
             }
         }
 
+        modeFilter.addEventListener('change', syncFilters);
         form.addEventListener('submit', search);
+        syncFilters();
     </script>
+    <script src="/js/offline-auth.js" defer></script>
 </body>
 </html>

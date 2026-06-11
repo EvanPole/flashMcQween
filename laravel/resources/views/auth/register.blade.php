@@ -65,8 +65,9 @@
                 {{ $errors->first() }}
             </div>
         @endif
+        <div id="offline-auth-error" class="error" hidden></div>
 
-        <form method="POST" action="{{ route('register') }}">
+        <form id="register-form" method="POST" action="{{ route('register') }}">
             @csrf
 
             <label>
@@ -95,5 +96,6 @@
             </div>
         </form>
     </main>
+    <script src="/js/offline-auth.js" defer></script>
 </body>
 </html>

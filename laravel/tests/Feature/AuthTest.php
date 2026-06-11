@@ -15,7 +15,8 @@ class AuthTest extends TestCase
     {
         $this->get('/register')
             ->assertOk()
-            ->assertSee('Inscription');
+            ->assertSee('Inscription')
+            ->assertSee('/js/offline-auth.js');
     }
 
     public function test_user_can_register(): void
@@ -34,11 +35,28 @@ class AuthTest extends TestCase
         ]);
     }
 
+    public function test_user_can_register_with_json_response(): void
+    {
+        $this->postJson('/register', [
+            'name' => 'Evan',
+            'email' => 'evan@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])
+            ->assertOk()
+            ->assertJsonPath('redirect', '/')
+            ->assertJsonPath('user.email', 'evan@example.com');
+
+        $this->assertAuthenticated();
+    }
+
     public function test_login_page_is_displayed(): void
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('Connexion');
+            ->assertSee('Connexion')
+            ->assertSee('offline-users')
+            ->assertSee('/js/offline-auth.js');
     }
 
     public function test_user_can_login(): void
@@ -56,6 +74,24 @@ class AuthTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_user_can_login_with_json_response(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'evan@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->postJson('/login', [
+            'email' => 'evan@example.com',
+            'password' => 'password',
+        ])
+            ->assertOk()
+            ->assertJsonPath('redirect', url('/'))
+            ->assertJsonPath('user.email', 'evan@example.com');
+
+        $this->assertAuthenticatedAs($user);
+    }
+
     public function test_user_cannot_login_with_invalid_password(): void
     {
         User::factory()->create([
@@ -67,6 +103,23 @@ class AuthTest extends TestCase
             'email' => 'evan@example.com',
             'password' => 'wrong-password',
         ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+    }
+
+    public function test_json_login_returns_validation_error_for_invalid_password(): void
+    {
+        User::factory()->create([
+            'email' => 'evan@example.com',
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->postJson('/login', [
+            'email' => 'evan@example.com',
+            'password' => 'wrong-password',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('email');
 
         $this->assertGuest();
     }
