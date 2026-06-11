@@ -111,7 +111,7 @@
         }
 
         .is-hidden {
-            display: none;
+            display: none !important;
         }
 
         button {
