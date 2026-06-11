@@ -11,12 +11,10 @@ class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_register_page_is_displayed(): void
+    public function test_register_route_returns_to_single_page_shell(): void
     {
         $this->get('/register')
-            ->assertOk()
-            ->assertSee('Inscription')
-            ->assertSee('/js/offline-auth.js');
+            ->assertRedirect('/');
     }
 
     public function test_user_can_register(): void
@@ -50,13 +48,10 @@ class AuthTest extends TestCase
         $this->assertAuthenticated();
     }
 
-    public function test_login_page_is_displayed(): void
+    public function test_login_route_returns_to_single_page_shell(): void
     {
         $this->get('/login')
-            ->assertOk()
-            ->assertSee('Connexion')
-            ->assertSee('offline-users')
-            ->assertSee('/js/offline-auth.js');
+            ->assertRedirect('/');
     }
 
     public function test_user_can_login(): void

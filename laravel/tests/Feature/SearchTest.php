@@ -23,10 +23,12 @@ class SearchTest extends TestCase
             ->assertSee('Deconnexion');
     }
 
-    public function test_guest_is_redirected_to_login(): void
+    public function test_guest_sees_single_page_auth_shell(): void
     {
         $this->get('/')
-            ->assertRedirect('/login');
+            ->assertOk()
+            ->assertSee('login-form')
+            ->assertSee('app-shell');
     }
 
     public function test_guest_cannot_query_search_api(): void

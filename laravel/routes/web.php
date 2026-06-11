@@ -4,6 +4,10 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/', function () {
+    return view('index');
+})->name('home');
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register']);
@@ -13,10 +17,6 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->group(function (): void {
-    Route::get('/', function () {
-        return view('index');
-    })->name('home');
-
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/api/search', SearchController::class);

@@ -1,7 +1,6 @@
-const cacheName = 'flashmcqween-offline-auth-v2';
+const cacheName = 'flashmcqween-offline-auth-v3';
 const shellUrls = [
-    '/login',
-    '/register',
+    '/',
     '/js/offline-auth.js',
 ];
 
@@ -41,8 +40,7 @@ self.addEventListener('fetch', (event) => {
                     const cache = await caches.open(cacheName);
 
                     return cache.match(request)
-                        || (url.pathname === '/' ? cache.match('/') : null)
-                        || cache.match('/login');
+                        || cache.match('/');
                 }),
         );
         return;

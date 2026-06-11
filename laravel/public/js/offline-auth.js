@@ -155,7 +155,7 @@
     }
 
     async function freshCsrfToken() {
-        const response = await fetch('/login', {
+        const response = await fetch('/', {
             credentials: 'same-origin',
             headers: { Accept: 'text/html' },
         });
@@ -235,6 +235,61 @@
         error.hidden = false;
     }
 
+    function clearError() {
+        const error = document.querySelector('#offline-auth-error');
+
+        if (error) {
+            error.textContent = '';
+            error.hidden = true;
+        }
+    }
+
+    function showApp(session) {
+        const authPanel = document.querySelector('#auth-panel');
+        const appShell = document.querySelector('#app-shell');
+        const label = document.querySelector('#auth-user-label');
+
+        authPanel?.classList.add('is-hidden');
+        appShell?.classList.remove('is-hidden');
+
+        if (label && session) {
+            label.textContent = session.offline
+                ? `Connecte hors ligne en tant que ${session.name || session.email}`
+                : `Connecte en tant que ${session.name || session.email}`;
+        }
+    }
+
+    function showAuth() {
+        document.querySelector('#auth-panel')?.classList.remove('is-hidden');
+        document.querySelector('#app-shell')?.classList.add('is-hidden');
+    }
+
+    function showLoginForm() {
+        document.querySelector('#login-form')?.classList.remove('is-hidden');
+        document.querySelector('#register-form')?.classList.add('is-hidden');
+        clearError();
+    }
+
+    function showRegisterForm() {
+        document.querySelector('#register-form')?.classList.remove('is-hidden');
+        document.querySelector('#login-form')?.classList.add('is-hidden');
+        clearError();
+    }
+
+    function serverSession() {
+        const body = document.body;
+
+        if (body.dataset.serverAuth !== '1') {
+            return null;
+        }
+
+        return {
+            name: body.dataset.serverUserName,
+            email: body.dataset.serverUserEmail,
+            offline: false,
+        };
+    }
+
     function populateLoginHistory() {
         const list = document.querySelector('#offline-users');
 
@@ -273,7 +328,11 @@
                 offline: false,
             });
 
-            window.location.href = payload.redirect || '/';
+            showApp({
+                name: payload.user?.name || email,
+                email,
+                offline: false,
+            });
         } catch (error) {
             if (navigator.onLine && !error.offlineEligible) {
                 showError(error.message);
@@ -293,7 +352,11 @@
                 offline: true,
             });
 
-            window.location.href = '/';
+            showApp({
+                name: user.name,
+                email: user.email,
+                offline: true,
+            });
         }
     }
 
@@ -313,7 +376,11 @@
                 offline: false,
             });
 
-            window.location.href = payload.redirect || '/';
+            showApp({
+                name: payload.user?.name || form.name.value,
+                email,
+                offline: false,
+            });
         } catch (error) {
             showError(navigator.onLine
                 ? error.message
@@ -355,35 +422,59 @@
                 offline: false,
             });
 
-            window.location.reload();
+            showApp({
+                name: payload.user?.name || record.name,
+                email: record.email,
+                offline: false,
+            });
         } catch (error) {
             // Keep the local offline session; another online event can retry later.
         }
     }
 
-    function hydrateOfflineIndex() {
-        const session = readSession();
-        const label = document.querySelector('#auth-user-label');
+    async function logoutOnline(form) {
+        const formData = new FormData(form);
+        let response;
 
-        if (label && session?.offline) {
-            label.textContent = `Connecte hors ligne en tant que ${session.name || session.email}`;
+        try {
+            response = await postJson(form.action, formData);
+        } catch (error) {
+            return;
+        }
+
+        if (response.status === 419) {
+            try {
+                await postJson(form.action, new FormData(form), await freshCsrfToken());
+            } catch (error) {
+                // Local logout is already done.
+            }
+        }
+    }
+
+    function hydrateIndex() {
+        const session = serverSession() || readSession();
+
+        if (session) {
+            showApp(session);
+        } else {
+            showAuth();
         }
 
         document.querySelector('#logout-form')?.addEventListener('submit', (event) => {
+            event.preventDefault();
             clearLocalSession();
-
-            if (!navigator.onLine) {
-                event.preventDefault();
-                window.location.href = '/login';
-            }
+            showAuth();
+            showLoginForm();
+            logoutOnline(event.currentTarget);
         });
+
+        document.querySelector('#show-login-button')?.addEventListener('click', showLoginForm);
+        document.querySelector('#show-register-button')?.addEventListener('click', showRegisterForm);
     }
 
-    function redirectOfflineSessionFromLogin() {
-        const session = readSession();
-
-        if (session?.offline && document.querySelector('#login-form')) {
-            window.location.href = '/';
+    function redirectLegacyAuthPages() {
+        if (['/login', '/register'].includes(window.location.pathname)) {
+            history.replaceState(null, '', '/');
         }
     }
 
@@ -403,8 +494,8 @@
     document.querySelector('#register-form')?.addEventListener('submit', handleRegister);
     window.addEventListener('online', reloginOnline);
     populateLoginHistory();
-    hydrateOfflineIndex();
+    hydrateIndex();
     registerServiceWorker();
-    redirectOfflineSessionFromLogin();
+    redirectLegacyAuthPages();
     reloginOnline();
 })();

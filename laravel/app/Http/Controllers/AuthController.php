@@ -8,13 +8,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function showRegister(): View
+    public function showRegister(): RedirectResponse
     {
-        return view('auth.register');
+        return redirect()->route('home');
     }
 
     public function register(Request $request): RedirectResponse|JsonResponse
@@ -43,9 +42,9 @@ class AuthController extends Controller
         return redirect()->route('home');
     }
 
-    public function showLogin(): View
+    public function showLogin(): RedirectResponse
     {
-        return view('auth.login');
+        return redirect()->route('home');
     }
 
     public function login(Request $request): RedirectResponse|JsonResponse
@@ -87,12 +86,18 @@ class AuthController extends Controller
         return redirect()->intended(route('home'));
     }
 
-    public function logout(Request $request): RedirectResponse
+    public function logout(Request $request): RedirectResponse|JsonResponse
     {
         Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'redirect' => route('home', [], false),
+            ]);
+        }
 
         return redirect()->route('login');
     }

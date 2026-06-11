@@ -12,10 +12,38 @@
             color: #111;
         }
 
+        main {
+            max-width: 100%;
+        }
+
         form {
             display: flex;
             gap: 8px;
             margin-bottom: 12px;
+        }
+
+        .auth-panel {
+            max-width: 460px;
+        }
+
+        .auth-panel form {
+            display: block;
+        }
+
+        .auth-panel label {
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        .auth-panel span {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .auth-switch {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
         }
 
         header {
@@ -69,6 +97,11 @@
             margin-bottom: 12px;
         }
 
+        .error {
+            color: #b00020;
+            margin-bottom: 12px;
+        }
+
         .offline {
             color: #a15c00;
         }
@@ -118,10 +151,69 @@
         }
     </style>
 </head>
-<body>
+<body data-server-auth="{{ auth()->check() ? '1' : '0' }}" data-server-user-name="{{ auth()->user()?->name }}" data-server-user-email="{{ auth()->user()?->email }}">
+    <main id="auth-panel" class="auth-panel{{ auth()->check() ? ' is-hidden' : '' }}">
+        <h1>Connexion</h1>
+        <div id="offline-auth-error" class="error" hidden></div>
+
+        <div class="auth-switch">
+            <button id="show-login-button" type="button">Connexion</button>
+            <button id="show-register-button" type="button">Inscription</button>
+        </div>
+
+        <form id="login-form" method="POST" action="{{ route('login') }}">
+            @csrf
+
+            <label>
+                <span>Email</span>
+                <input name="email" type="email" required autocomplete="email" list="offline-users">
+                <datalist id="offline-users"></datalist>
+            </label>
+
+            <label>
+                <span>Mot de passe</span>
+                <input name="password" type="password" required autocomplete="current-password">
+            </label>
+
+            <label>
+                <input name="remember" type="checkbox" value="1" style="width: auto;">
+                Se souvenir de moi
+            </label>
+
+            <button type="submit">Se connecter</button>
+        </form>
+
+        <form id="register-form" class="is-hidden" method="POST" action="{{ route('register') }}">
+            @csrf
+
+            <label>
+                <span>Nom</span>
+                <input name="name" type="text" required autocomplete="name">
+            </label>
+
+            <label>
+                <span>Email</span>
+                <input name="email" type="email" required autocomplete="email">
+            </label>
+
+            <label>
+                <span>Mot de passe</span>
+                <input name="password" type="password" required autocomplete="new-password">
+            </label>
+
+            <label>
+                <span>Confirmer le mot de passe</span>
+                <input name="password_confirmation" type="password" required autocomplete="new-password">
+            </label>
+
+            <button type="submit">Creer le compte</button>
+        </form>
+    </main>
+
+    <main id="app-shell" class="{{ auth()->check() ? '' : 'is-hidden' }}">
     <header>
         <div id="auth-user-label">
-            Connecte en tant que {{ auth()->user()->name }}
+            Connecte en tant que {{ auth()->user()?->name }}
         </div>
         <form id="logout-form" method="POST" action="{{ route('logout') }}">
             @csrf
@@ -176,6 +268,7 @@
             </tr>
         </tbody>
     </table>
+    </main>
 
     <script>
         const form = document.querySelector('#search-form');
