@@ -8,8 +8,9 @@
     <style>
         body {
             font-family: system-ui, sans-serif;
-            margin: 24px;
+            margin: 0;
             color: #111;
+            background: #f6f6f6;
         }
 
         main {
@@ -24,6 +25,10 @@
 
         .auth-panel {
             max-width: 460px;
+            margin: 56px auto;
+            padding: 24px;
+            background: white;
+            border: 1px solid #ddd;
         }
 
         .auth-panel form {
@@ -40,10 +45,35 @@
             margin-bottom: 4px;
         }
 
+        .auth-panel input {
+            box-sizing: border-box;
+            width: 100%;
+        }
+
         .auth-switch {
-            display: flex;
-            gap: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             margin-bottom: 16px;
+            border: 1px solid #111;
+        }
+
+        .auth-switch button {
+            border: 0;
+            background: white;
+            color: #111;
+        }
+
+        .auth-switch button.is-active {
+            background: #111;
+            color: white;
+        }
+
+        .auth-submit {
+            width: 100%;
+        }
+
+        #app-shell {
+            margin: 24px;
         }
 
         header {
@@ -153,11 +183,11 @@
 </head>
 <body data-server-auth="{{ auth()->check() ? '1' : '0' }}" data-server-user-name="{{ auth()->user()?->name }}" data-server-user-email="{{ auth()->user()?->email }}">
     <main id="auth-panel" class="auth-panel{{ auth()->check() ? ' is-hidden' : '' }}">
-        <h1>Connexion</h1>
+        <h1 id="auth-title">Connexion</h1>
         <div id="offline-auth-error" class="error" hidden></div>
 
         <div class="auth-switch">
-            <button id="show-login-button" type="button">Connexion</button>
+            <button id="show-login-button" class="is-active" type="button">Connexion</button>
             <button id="show-register-button" type="button">Inscription</button>
         </div>
 
@@ -180,7 +210,7 @@
                 Se souvenir de moi
             </label>
 
-            <button type="submit">Se connecter</button>
+            <button class="auth-submit" type="submit">Se connecter</button>
         </form>
 
         <form id="register-form" class="is-hidden" method="POST" action="{{ route('register') }}">
@@ -206,7 +236,7 @@
                 <input name="password_confirmation" type="password" required autocomplete="new-password">
             </label>
 
-            <button type="submit">Creer le compte</button>
+            <button class="auth-submit" type="submit">Creer le compte</button>
         </form>
     </main>
 

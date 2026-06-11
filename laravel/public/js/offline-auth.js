@@ -267,12 +267,18 @@
     function showLoginForm() {
         document.querySelector('#login-form')?.classList.remove('is-hidden');
         document.querySelector('#register-form')?.classList.add('is-hidden');
+        document.querySelector('#auth-title').textContent = 'Connexion';
+        document.querySelector('#show-login-button')?.classList.add('is-active');
+        document.querySelector('#show-register-button')?.classList.remove('is-active');
         clearError();
     }
 
     function showRegisterForm() {
         document.querySelector('#register-form')?.classList.remove('is-hidden');
         document.querySelector('#login-form')?.classList.add('is-hidden');
+        document.querySelector('#auth-title').textContent = 'Inscription';
+        document.querySelector('#show-register-button')?.classList.add('is-active');
+        document.querySelector('#show-login-button')?.classList.remove('is-active');
         clearError();
     }
 
